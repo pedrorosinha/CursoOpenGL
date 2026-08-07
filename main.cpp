@@ -68,12 +68,12 @@ int main() {
 	// ========================================================
 	GLfloat vertices[] =
 	{
-		-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower left corner
-		 0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower right corner
-		 0.0f,  0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
-		-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
-		 0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
-		 0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f // Inner down
+		-0.5f, -0.5f * float(sqrt(3)) / 3,      0.0f, 0.8f, 0.3f, 0.02f,        // Lower left corner
+		 0.5f, -0.5f * float(sqrt(3)) / 3,      0.0f, 0.8f, 0.3f, 0.02f,        // Lower right corner
+		 0.0f,  0.5f * float(sqrt(3)) * 2 / 3,  0.0f, 1.0f, 0.6f, 0.32f,        // Upper corner
+		-0.25f, 0.5f * float(sqrt(3)) / 6,      0.0f, 0.9f, 0.45f, 0.17f,       // Inner left
+		 0.25f, 0.5f * float(sqrt(3)) / 6,      0.0f, 0.9f, 0.45f, 0.17f,       // Inner right
+		 0.0f, -0.5f * float(sqrt(3)) / 3,      0.0f, 0.8f, 0.3f, 0.02f         // Inner down
 	};
 
 
@@ -146,14 +146,18 @@ int main() {
 	// devem ser interpretados.
 	//
 	// O índice 0 corresponde ao atributo "aPos" do Vertex Shader.
+	// O índice 1 corresponde ao atributo "aColor" do Vertex Shader.
 	// ========================================================
-	VAO1.LinkVBO(VBO1, 0);
-
+	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
 	// Desativa os objetos após terminar a configuração.
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
+
+
+	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
 
 	// ========================================================
@@ -177,6 +181,7 @@ int main() {
 
 		// Ativa o Shader Program.
 		shaderProgram.Activate();
+		glUniform1f(uniID, 0.5f);
 
 
 		// Ativa o VAO com a configuração dos vértices.
