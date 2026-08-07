@@ -2,39 +2,21 @@
 #include <glad/glad.h>      // Carrega as funções do OpenGL
 #include <GLFW/glfw3.h>     // Cria a janela e gerencia eventos
 
-// ============================================================
-// VERTEX SHADER
-// Executado para cada vértice.
-// Recebe a posição do vértice e define sua posição na tela.
-// ============================================================
-const char* vertexShaderSource =
-"#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\0";
+#include "shaderClass.h"    // Cria e gerencia o Shader Program
+#include "VAO.h"            // Cria e gerencia o Vertex Array Object
+#include "VBO.h"            // Cria e gerencia o Vertex Buffer Object
+#include "EBO.h"            // Cria e gerencia o Element Buffer Object
 
-// ============================================================
-// FRAGMENT SHADER
-// Executado para cada fragmento/pixel do objeto.
-// Define a cor final que será desenhada.
-// ============================================================
-const char* fragmentShaderSource =
-"#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(0.8f, 0.3f, 0.02f, 1.0f);\n"
-"}\n\0";
 
 int main() {
 
 	// Inicializa a GLFW
 	glfwInit();
 
+
 	// ========================================================
 	// CONFIGURAÇÃO DO CONTEXTO OPENGL
+	//
 	// Solicita uma janela usando OpenGL 3.3 Core Profile.
 	// ========================================================
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -44,6 +26,7 @@ int main() {
 
 	// ========================================================
 	// CRIAÇÃO DA JANELA
+	//
 	// Cria uma janela de 800x800 pixels.
 	// ========================================================
 	GLFWwindow* window =
@@ -63,6 +46,7 @@ int main() {
 
 	// ========================================================
 	// GLAD
+	//
 	// Carrega as funções do OpenGL que serão utilizadas
 	// através do driver da placa de vídeo.
 	// ========================================================
@@ -71,57 +55,6 @@ int main() {
 
 	// Define a área da janela onde o OpenGL irá desenhar.
 	glViewport(0, 0, 800, 800);
-
-
-	// ========================================================
-	// VERTEX SHADER
-	// Cria, fornece o código e compila o Vertex Shader.
-	// ========================================================
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-	glShaderSource(
-		vertexShader,
-		1,
-		&vertexShaderSource,
-		nullptr
-	);
-
-	glCompileShader(vertexShader);
-
-
-	// ========================================================
-	// FRAGMENT SHADER
-	// Cria, fornece o código e compila o Fragment Shader.
-	// ========================================================
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-	glShaderSource(
-		fragmentShader,
-		1,
-		&fragmentShaderSource,
-		nullptr
-	);
-
-	glCompileShader(fragmentShader);
-
-
-	// ========================================================
-	// SHADER PROGRAM
-	// Cria um programa que irá reunir os shaders.
-	// ========================================================
-	GLuint shaderProgram = glCreateProgram();
-
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-
-	// Liga os shaders formando um programa que pode ser usado pela GPU.
-	glLinkProgram(shaderProgram);
-
-
-	// Depois que foram ligados ao programa,
-	// os shaders individuais não são mais necessários.
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
 
 
 	// ========================================================
@@ -161,101 +94,66 @@ int main() {
 
 
 	// ========================================================
-	// VAO, VBO E EBO
+	// SHADER
 	//
-	// VAO = guarda a configuração de como os vértices
-	//       devem ser interpretados.
+	// Cria o Shader Program a partir dos arquivos:
 	//
-	// VBO = armazena os dados dos vértices.
+	// default.vert -> Vertex Shader
+	// default.frag -> Fragment Shader
 	//
-	// EBO = armazena os índices usados para acessar os vértices.
+	// A classe Shader cuida de carregar, compilar e
+	// conectar os dois shaders.
 	// ========================================================
-	GLuint VAO, VBO, EBO;
+	Shader shaderProgram("default.vert", "default.frag");
 
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
 
+	// ========================================================
+	// VAO
+	//
+	// Cria o Vertex Array Object.
+	//
+	// O VAO guarda a configuração dos dados dos vértices
+	// que serão utilizados durante o desenho.
+	// ========================================================
+	VAO VAO1;
 
 	// Ativa o VAO.
-	// As configurações feitas enquanto ele está ativo
-	// ficam associadas a ele.
-	glBindVertexArray(VAO);
-
-
-	// Ativa o VBO como buffer de vértices.
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	VAO1.Bind();
 
 
 	// ========================================================
-	// ENVIA OS VÉRTICES PARA A GPU
+	// VBO
 	//
-	// Copia os dados de "vertices" da memória da CPU
-	// para o VBO.
+	// Cria o Vertex Buffer Object e envia os vértices
+	// para a memória da GPU.
 	// ========================================================
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		sizeof(vertices),
-		vertices,
-		GL_STATIC_DRAW
-	);
-
-
-	// Ativa o EBO como buffer de índices.
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-
-	// Copia os índices da CPU para o EBO.
-	glBufferData(
-		GL_ELEMENT_ARRAY_BUFFER,
-		sizeof(indices),
-		indices,
-		GL_STATIC_DRAW
-	);
+	VBO VBO1(vertices, sizeof(vertices));
 
 
 	// ========================================================
-	// CONFIGURAÇÃO DOS ATRIBUTOS
+	// EBO
 	//
-	// Explica ao OpenGL como interpretar os dados armazenados
-	// no VBO.
+	// Cria o Element Buffer Object e envia os índices
+	// para a memória da GPU.
+	// ========================================================
+	EBO EBO1(indices, sizeof(indices));
+
+
+	// ========================================================
+	// CONFIGURAÇÃO DO VAO
 	//
-	// location 0 -> posição do vértice
-	// 3          -> X, Y e Z
-	// GL_FLOAT   -> cada valor é float
-	// stride     -> cada vértice possui 3 floats
-	// ========================================================
-	glVertexAttribPointer(
-		0,
-		3,
-		GL_FLOAT,
-		GL_FALSE,
-		3 * sizeof(float),
-		(void*)0
-	);
-
-
-	// Ativa o atributo de posição do vértice.
-	glEnableVertexAttribArray(0);
-
-
-	// Desassocia o VBO e o VAO.
+	// Informa ao VAO como os dados armazenados no VBO
+	// devem ser interpretados.
 	//
-	// O EBO NÃO é desassociado aqui porque sua associação
-	// faz parte do estado do VAO.
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-
-
+	// O índice 0 corresponde ao atributo "aPos" do Vertex Shader.
 	// ========================================================
-	// CONFIGURAÇÃO INICIAL DA TELA
-	// Define a cor que será usada para limpar a tela.
-	// ========================================================
-	glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+	VAO1.LinkVBO(VBO1, 0);
 
-	glClear(GL_COLOR_BUFFER_BIT);
 
-	// Mostra o conteúdo desenhado na janela.
-	glfwSwapBuffers(window);
+	// Desativa os objetos após terminar a configuração.
+	VAO1.Unbind();
+	VBO1.Unbind();
+	EBO1.Unbind();
 
 
 	// ========================================================
@@ -277,13 +175,12 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
-		// Diz à GPU qual programa de shaders deve ser usado.
-		glUseProgram(shaderProgram);
+		// Ativa o Shader Program.
+		shaderProgram.Activate();
 
 
-		// Ativa o VAO com as configurações dos vértices.
-		// O VAO também possui a associação com o EBO.
-		glBindVertexArray(VAO);
+		// Ativa o VAO com a configuração dos vértices.
+		VAO1.Bind();
 
 
 		// ====================================================
@@ -314,10 +211,10 @@ int main() {
 	//
 	// Libera os recursos que foram criados na GPU.
 	// ========================================================
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
-	glDeleteProgram(shaderProgram);
+	VAO1.Delete();
+	VBO1.Delete();
+	EBO1.Delete();
+	shaderProgram.Delete();
 
 
 	// Fecha a janela e encerra a GLFW.
