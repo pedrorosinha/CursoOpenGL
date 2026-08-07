@@ -1,104 +1,159 @@
 #include <iostream>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <glad/glad.h>      // Carrega as funções modernas do OpenGL
+#include <GLFW/glfw3.h>     // Cria janelas e recebe entrada do teclado/mouse
 
-// Vertex Shader source code
-const char* vertexShaderSource = "#version 330 core\n"
+// ---------------- SHADERS ----------------
+// Vertex Shader: executado para cada vértice.
+// Define a posição de cada ponto do objeto.
+const char* vertexShaderSource =
+"#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
 "void main()\n"
 "{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\0";
-//Fragment Shader source code
-const char* fragmentShaderSource = "#version 330 core\n"
+"   gl_Position = vec4(aPos, 1.0);\n"
+"}";
+
+// Fragment Shader: executado para cada pixel.
+// Define a cor final do objeto.
+const char* fragmentShaderSource =
+"#version 330 core\n"
 "out vec4 FragColor;\n"
 "void main()\n"
 "{\n"
 "   FragColor = vec4(0.8f, 0.3f, 0.02f, 1.0f);\n"
-"}\n\0";
+"}";
 
-int main() {
-	glfwInit();
+int main()
+{
+    // Inicializa a biblioteca GLFW
+    glfwInit();
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    // Solicita um contexto OpenGL 3.3 Core Profile
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLfloat vertices[] = {
-		-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,
-		0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,
-		0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f,
-	};
+    // Vértices do triângulo (x, y, z)
+    GLfloat vertices[] =
+    {
+        -0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,
+         0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,
+         0.0f,  0.5f * float(sqrt(3)) * 2 / 3, 0.0f,
+    };
 
-	GLFWwindow* window = glfwCreateWindow(800, 800, "Janela OpenGL", nullptr, nullptr);
+    // Cria a janela e o contexto OpenGL
+    GLFWwindow* window =
+        glfwCreateWindow(800, 800, "Janela OpenGL", nullptr, nullptr);
 
-	if (!window) {
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		return -1;
-	}
+    if (!window)
+    {
+        std::cout << "Erro ao criar janela\n";
+        glfwTerminate();
+        return -1;
+    }
 
-	glfwMakeContextCurrent(window);
+    // Torna esta janela o contexto OpenGL ativo
+    glfwMakeContextCurrent(window);
 
-	gladLoadGL();
+    // GLAD obtém os ponteiros das funções do driver da placa de vídeo
+    gladLoadGL();
 
-	glViewport(0, 0, 800, 800);
+    // Define qual região da janela será usada para desenhar
+    glViewport(0, 0, 800, 800);
 
+    // ----------- COMPILAÇÃO DOS SHADERS -----------
 
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-	glCompileShader(vertexShader);
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
 
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-	glCompileShader(fragmentShader);
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(fragmentShader);
 
-	GLuint shaderProgram = glCreateProgram();
+    // Programa que reúne todos os shaders utilizados
+    GLuint shaderProgram = glCreateProgram();
 
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
 
-	glLinkProgram(shaderProgram);
+    glLinkProgram(shaderProgram);
 
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
+    // Após criar o programa, os shaders individuais não são mais necessários
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
 
-	GLuint VAO, VBO;
+    // ----------- BUFFERS -----------
 
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
+    GLuint VAO, VBO;
 
-	glBindVertexArray(VAO);
+    // Cria os identificadores
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    // OpenGL é uma máquina de estados.
+    // Ao fazer Bind, tudo que vier depois atua nesse objeto.
+    glBindVertexArray(VAO);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+    // Envia os vértices da RAM para a memória da GPU
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(vertices),
+        vertices,
+        GL_STATIC_DRAW);
 
-	glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glfwSwapBuffers(window);
+    // Explica ao OpenGL como interpretar cada vértice
+    // Local 0 -> posição
+    // 3 floats -> x y z
+    glVertexAttribPointer(
+        0,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        3 * sizeof(float),
+        (void*)0);
 
-	while (!glfwWindowShouldClose(window)) {
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(shaderProgram);
-		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-		glfwSwapBuffers(window);
+    // Ativa o atributo de posição
+    glEnableVertexAttribArray(0);
 
-		glfwPollEvents();
-	}
+    // Desassocia os objetos (boa prática)
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteProgram(shaderProgram);
+    // ----------- LOOP PRINCIPAL -----------
 
-	glfwDestroyWindow(window);
-	glfwTerminate();
-	return 0;
+    while (!glfwWindowShouldClose(window))
+    {
+        // Limpa a tela com a cor definida
+        glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Seleciona o programa de shaders
+        glUseProgram(shaderProgram);
+
+        // Seleciona o VAO contendo os vértices
+        glBindVertexArray(VAO);
+
+        // Desenha 3 vértices formando um triângulo
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Exibe a imagem na janela
+        glfwSwapBuffers(window);
+
+        // Processa teclado, mouse e eventos da janela
+        glfwPollEvents();
+    }
+
+    // ----------- LIMPEZA -----------
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    return 0;
 }
