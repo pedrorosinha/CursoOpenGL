@@ -1,5 +1,5 @@
 #include "shaderClass.h"
-
+#include <iostream>
 
 // ========================================================
 // LEITURA DO ARQUIVO
@@ -31,6 +31,7 @@ std::string get_file_contents(const char* filename) {
 		// Lê todo o conteúdo para a string.
 		in.read(&contents[0], contents.size());
 
+		// Fecha o arquivo.
 		in.close();
 
 		return contents;
@@ -80,6 +81,7 @@ Shader::Shader(
 	GLuint vertexShader =
 		glCreateShader(GL_VERTEX_SHADER);
 
+	// Envia o código-fonte para o Vertex Shader.
 	glShaderSource(
 		vertexShader,
 		1,
@@ -87,7 +89,11 @@ Shader::Shader(
 		nullptr
 	);
 
+	// Compila o código do Vertex Shader.
 	glCompileShader(vertexShader);
+
+	// Verifica se a compilação foi realizada com sucesso.
+	compileErrors(vertexShader, "VERTEX");
 
 
 	// ========================================================
@@ -99,6 +105,7 @@ Shader::Shader(
 	GLuint fragmentShader =
 		glCreateShader(GL_FRAGMENT_SHADER);
 
+	// Envia o código-fonte para o Fragment Shader.
 	glShaderSource(
 		fragmentShader,
 		1,
@@ -106,7 +113,11 @@ Shader::Shader(
 		nullptr
 	);
 
+	// Compila o código do Fragment Shader.
 	glCompileShader(fragmentShader);
+
+	// Verifica se a compilação foi realizada com sucesso.
+	compileErrors(fragmentShader, "FRAGMENT");
 
 
 	// ========================================================
@@ -117,14 +128,19 @@ Shader::Shader(
 	ID = glCreateProgram();
 
 
-	// Adiciona os shaders ao programa.
+	// Adiciona o Vertex Shader ao programa.
 	glAttachShader(ID, vertexShader);
+
+	// Adiciona o Fragment Shader ao programa.
 	glAttachShader(ID, fragmentShader);
 
 
 	// Liga os shaders formando um programa que pode
 	// ser usado pela GPU.
 	glLinkProgram(ID);
+
+	// Verifica se o Shader Program foi ligado corretamente.
+	compileErrors(ID, "PROGRAM");
 
 
 	// Depois que foram ligados ao programa,
@@ -142,6 +158,7 @@ Shader::Shader(
 // ========================================================
 void Shader::Activate()
 {
+	// Torna este Shader Program o programa ativo.
 	glUseProgram(ID);
 }
 
@@ -153,5 +170,95 @@ void Shader::Activate()
 // ========================================================
 void Shader::Delete()
 {
+	// Remove o Shader Program criado.
 	glDeleteProgram(ID);
+}
+
+
+// ========================================================
+// COMPILE ERRORS
+//
+// Verifica se um Shader foi compilado corretamente
+// ou se um Shader Program foi ligado corretamente.
+//
+// "shader" -> ID do shader ou programa.
+// "type"   -> identifica o tipo que está sendo verificado.
+//
+// VERTEX   -> verifica compilação do Vertex Shader.
+// FRAGMENT -> verifica compilação do Fragment Shader.
+// PROGRAM  -> verifica ligação do Shader Program.
+// ========================================================
+void Shader::compileErrors(unsigned int shader, const char* type)
+{
+	// Armazena o resultado da compilação ou ligação.
+	GLint hasCompiled;
+
+	// Armazena a mensagem de erro retornada pelo OpenGL.
+	char infoLog[1024];
+
+
+	// Se não for "PROGRAM", estamos verificando
+	// a compilação de um Vertex ou Fragment Shader.
+	if (type != "PROGRAM")
+	{
+		// Obtém o status da compilação do shader.
+		glGetShaderiv(
+			shader,
+			GL_COMPILE_STATUS,
+			&hasCompiled
+		);
+
+
+		// GL_FALSE significa que ocorreu um erro.
+		if (hasCompiled == GL_FALSE)
+		{
+			// Obtém a mensagem de erro da compilação.
+			glGetShaderInfoLog(
+				shader,
+				1024,
+				NULL,
+				infoLog
+			);
+
+
+			// Exibe o erro no console.
+			std::cout
+				<< "SHADER_COMPILATION_ERROR for:"
+				<< type
+				<< "\n"
+				<< infoLog
+				<< std::endl;
+		}
+	}
+	else
+	{
+		// Verifica se o Shader Program foi ligado corretamente.
+		glGetProgramiv(
+			shader,
+			GL_LINK_STATUS,
+			&hasCompiled
+		);
+
+
+		// GL_FALSE significa que ocorreu um erro.
+		if (hasCompiled == GL_FALSE)
+		{
+			// Obtém a mensagem de erro da ligação.
+			glGetProgramInfoLog(
+				shader,
+				1024,
+				NULL,
+				infoLog
+			);
+
+
+			// Exibe o erro no console.
+			std::cout
+				<< "SHADER_LINKING_ERROR for:"
+				<< type
+				<< "\n"
+				<< infoLog
+				<< std::endl;
+		}
+	}
 }
