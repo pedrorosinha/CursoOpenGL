@@ -2,12 +2,18 @@
 #include <glad/glad.h>       // Carrega as funções do OpenGL
 #include <GLFW/glfw3.h>      // Cria a janela e gerencia eventos
 #include <stb/stb_image.h>  // Carrega imagens para serem usadas como texturas
+#include <glm/glm.hpp>       // Biblioteca de matemática para gráficos 3D
+#include <glm/gtc/matrix_transform.hpp> // Funções de transformação de matrizes
+#include <glm/gtc/type_ptr.hpp> // Converte matrizes para ponteiros de float
 
 #include "Texture.h"         // Cria e gerencia Texturas
 #include "shaderClass.h"     // Cria e gerencia o Shader Program
 #include "VAO.h"             // Cria e gerencia o Vertex Array Object
 #include "VBO.h"             // Cria e gerencia o Vertex Buffer Object
 #include "EBO.h"             // Cria e gerencia o Element Buffer Object
+
+const unsigned int width = 800;
+const unsigned int height = 800;
 
 
 int main() {
@@ -32,7 +38,7 @@ int main() {
 	// Cria uma janela de 800x800 pixels.
 	// ========================================================
 	GLFWwindow* window =
-		glfwCreateWindow(800, 800, "Janela OpenGL", nullptr, nullptr);
+		glfwCreateWindow(width, height, "Janela OpenGL", nullptr, nullptr);
 
 	if (!window) {
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -56,7 +62,7 @@ int main() {
 
 
 	// Define a área da janela onde o OpenGL irá desenhar.
-	glViewport(0, 0, 800, 800);
+	glViewport(0, 0, width, height);
 
 
 	// ========================================================
@@ -73,10 +79,11 @@ int main() {
 	// ========================================================
 	GLfloat vertices[] =
 	{
-		-0.5f, -0.5f, 0.0f,     1.0f, 0.0f, 0.0f,   0.0f, 0.0f, // Lower left corner
-		-0.5f,  0.5f, 0.0f,     0.0f, 1.0f, 0.0f,   0.0f, 1.0f, // Upper left corner
-		 0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,   1.0f, 1.0f, // Upper right corner
-		 0.5f, -0.5f, 0.0f,     1.0f, 1.0f, 1.0f,   1.0f, 0.0f  // Lower right corner
+		-0.5f, 0.0f, 0.5f,     0.83f, 0.70f, 0.44f,   0.0f, 0.0f,
+		-0.5f, 0.0f, -0.5f,    0.83f, 0.70f, 0.44f,   5.0f, 0.0f,
+		 0.5f, 0.0f, -0.5f,    0.83f, 0.70f, 0.44f,   0.0f, 0.0f,
+		 0.5f, 0.0f, 0.5f,     0.83f, 0.70f, 0.44f,   5.0f, 5.0f,
+		 0.0f, 0.8f, 0.0f,     0.92f, 0.86f, 0.76f,   2.5f, 5.0f
 	};
 
 
@@ -92,8 +99,12 @@ int main() {
 	// ========================================================
 	GLuint indices[] =
 	{
-		0, 2, 1, // Upper triangle
-		0, 3, 2  // Lower triangle
+		0, 1, 2,
+		0, 2, 3,
+		0, 1, 4,
+		1, 2, 4,
+		2, 3, 4,
+		3, 0, 4
 	};
 
 
@@ -214,7 +225,7 @@ int main() {
 	// ========================================================
 	// TEXTURA
 	//
-	// Cria uma textura utilizando a imagem "pop_cat.png".
+	// Cria uma textura utilizando a imagem "brick.png".
 	//
 	// GL_TEXTURE_2D -> textura 2D.
 	// GL_TEXTURE0  -> unidade de textura utilizada.
@@ -222,7 +233,7 @@ int main() {
 	// GL_UNSIGNED_BYTE -> cada componente possui 1 byte.
 	// ========================================================
 	Texture popcat(
-		"pop_cat.png",
+		"brick.png",
 		GL_TEXTURE_2D,
 		GL_TEXTURE0,
 		GL_RGBA,
@@ -235,6 +246,11 @@ int main() {
 	// O shader poderá utilizar essa variável para
 	// acessar a textura durante o desenho.
 	popcat.texUnit(shaderProgram, "tex0", 0);
+
+	float rotation = 0.0f;
+	double prevTime = glfwGetTime();
+
+	glEnable(GL_DEPTH_TEST); // Habilita o teste de profundidade para renderização 3D
 
 
 	// ========================================================
@@ -255,30 +271,57 @@ int main() {
 
 		// Limpa a tela.
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Ativa o Shader Program.
 		shaderProgram.Activate();
 
+		// Atualiza o valor do Uniform "scale" a cada 1/60 segundos.
+		double crntTime = glfwGetTime();
+		if (crntTime - prevTime >= 1.0 / 60)
+		{
+			// Atualiza a rotação do objeto.
+			rotation += 0.5f;
+			prevTime = crntTime;
+		}
+
+		// ====================================================
+		// MATRIZES DE TRANSFORMAÇÃO
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 proj = glm::mat4(1.0f);
+
+		// ====================================================
+		// TRANSFORMAÇÕES
+		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -2.0f));
+		proj = glm::perspective(glm::radians(45.0f), (float)(width / height), 0.1f, 100.0f);
+
+		// ====================================================
+		// ENVIO DAS MATRIZES PARA O SHADER
+		int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+		int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+		int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
+		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
 		// Envia o valor 0.5 para o Uniform "scale".
 		glUniform1f(uniID, 0.5f);
 
-
 		// Ativa a textura.
 		popcat.Bind();
 
-
 		// Ativa o VAO com a configuração dos vértices.
 		VAO1.Bind();
-
 
 		// ====================================================
 		// DESENHO COM ÍNDICES
 		//
 		// GL_TRIANGLES -> grupos de 3 índices formam triângulos.
-		// 6            -> utiliza 6 índices.
+		// sizeof(indices) / sizeof(int) -> número de índices.
 		// GL_UNSIGNED_INT -> cada índice é um unsigned int.
 		// 0            -> começa no primeiro índice do EBO.
 		//
@@ -286,21 +329,18 @@ int main() {
 		// ====================================================
 		glDrawElements(
 			GL_TRIANGLES,
-			6,
+			sizeof(indices) / sizeof(int),
 			GL_UNSIGNED_INT,
 			0
 		);
-
 
 		// Troca o buffer traseiro pelo dianteiro.
 		// Isso faz o desenho aparecer na janela.
 		glfwSwapBuffers(window);
 
-
 		// Processa teclado, mouse e eventos da janela.
 		glfwPollEvents();
 	}
-
 
 	// ========================================================
 	// LIMPEZA
