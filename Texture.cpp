@@ -192,7 +192,7 @@ Texture::Texture(
 // unit    -> unidade de textura que será utilizada.
 // ========================================================
 void Texture::texUnit(
-	Shader shader,
+	Shader& shader,
 	const char* uniform,
 	GLuint unit)
 {
