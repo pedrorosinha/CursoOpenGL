@@ -1,16 +1,18 @@
 #include <iostream>
-#include <glad/glad.h>      // Carrega as funções do OpenGL
-#include <GLFW/glfw3.h>     // Cria a janela e gerencia eventos
+#include <glad/glad.h>       // Carrega as funções do OpenGL
+#include <GLFW/glfw3.h>      // Cria a janela e gerencia eventos
+#include <stb/stb_image.h>  // Carrega imagens para serem usadas como texturas
 
-#include "shaderClass.h"    // Cria e gerencia o Shader Program
-#include "VAO.h"            // Cria e gerencia o Vertex Array Object
-#include "VBO.h"            // Cria e gerencia o Vertex Buffer Object
-#include "EBO.h"            // Cria e gerencia o Element Buffer Object
+#include "Texture.h"         // Cria e gerencia Texturas
+#include "shaderClass.h"     // Cria e gerencia o Shader Program
+#include "VAO.h"             // Cria e gerencia o Vertex Array Object
+#include "VBO.h"             // Cria e gerencia o Vertex Buffer Object
+#include "EBO.h"             // Cria e gerencia o Element Buffer Object
 
 
 int main() {
 
-	// Inicializa a GLFW
+	// Inicializa a GLFW.
 	glfwInit();
 
 
@@ -60,20 +62,21 @@ int main() {
 	// ========================================================
 	// VÉRTICES
 	//
-	// Cada vértice possui 3 valores:
-	// X, Y e Z.
+	// Cada vértice possui 8 valores:
 	//
-	// Os 3 primeiros vértices formam o triângulo externo.
-	// Os outros 3 representam os vértices internos.
+	// X, Y, Z -> posição do vértice
+	// R, G, B -> cor do vértice
+	// U, V    -> coordenada da textura
+	//
+	// As coordenadas U e V indicam qual parte da imagem
+	// será aplicada em cada vértice.
 	// ========================================================
 	GLfloat vertices[] =
 	{
-		-0.5f, -0.5f * float(sqrt(3)) / 3,      0.0f, 0.8f, 0.3f, 0.02f,        // Lower left corner
-		 0.5f, -0.5f * float(sqrt(3)) / 3,      0.0f, 0.8f, 0.3f, 0.02f,        // Lower right corner
-		 0.0f,  0.5f * float(sqrt(3)) * 2 / 3,  0.0f, 1.0f, 0.6f, 0.32f,        // Upper corner
-		-0.25f, 0.5f * float(sqrt(3)) / 6,      0.0f, 0.9f, 0.45f, 0.17f,       // Inner left
-		 0.25f, 0.5f * float(sqrt(3)) / 6,      0.0f, 0.9f, 0.45f, 0.17f,       // Inner right
-		 0.0f, -0.5f * float(sqrt(3)) / 3,      0.0f, 0.8f, 0.3f, 0.02f         // Inner down
+		-0.5f, -0.5f, 0.0f,     1.0f, 0.0f, 0.0f,   0.0f, 0.0f, // Lower left corner
+		-0.5f,  0.5f, 0.0f,     0.0f, 1.0f, 0.0f,   0.0f, 1.0f, // Upper left corner
+		 0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,   1.0f, 1.0f, // Upper right corner
+		 0.5f, -0.5f, 0.0f,     1.0f, 1.0f, 1.0f,   1.0f, 0.0f  // Lower right corner
 	};
 
 
@@ -84,12 +87,13 @@ int main() {
 	// para formar os triângulos.
 	//
 	// Cada grupo de 3 índices representa um triângulo.
+	//
+	// Os dois triângulos juntos formam um quadrado.
 	// ========================================================
 	GLuint indices[] =
 	{
-		0, 3, 5, // Lower left triangle
-		3, 2, 4, // Upper triangle
-		5, 4, 1  // Lower right triangle
+		0, 2, 1, // Upper triangle
+		0, 3, 2  // Lower triangle
 	};
 
 
@@ -145,11 +149,48 @@ int main() {
 	// Informa ao VAO como os dados armazenados no VBO
 	// devem ser interpretados.
 	//
-	// O índice 0 corresponde ao atributo "aPos" do Vertex Shader.
-	// O índice 1 corresponde ao atributo "aColor" do Vertex Shader.
+	// Cada vértice possui 8 floats:
+	//
+	// 0 -> posição (X, Y, Z)
+	// 1 -> cor      (R, G, B)
+	// 2 -> textura  (U, V)
+	//
+	// O stride é 8 * sizeof(float), pois precisamos
+	// pular todos os 8 valores para chegar ao próximo vértice.
 	// ========================================================
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
-	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+	// Configura o atributo de posição.
+	VAO1.LinkAttrib(
+		VBO1,
+		0,
+		3,
+		GL_FLOAT,
+		8 * sizeof(float),
+		(void*)0
+	);
+
+
+	// Configura o atributo de cor.
+	VAO1.LinkAttrib(
+		VBO1,
+		1,
+		3,
+		GL_FLOAT,
+		8 * sizeof(float),
+		(void*)(3 * sizeof(float))
+	);
+
+
+	// Configura o atributo das coordenadas da textura.
+	VAO1.LinkAttrib(
+		VBO1,
+		2,
+		2,
+		GL_FLOAT,
+		8 * sizeof(float),
+		(void*)(6 * sizeof(float))
+	);
+
 
 	// Desativa os objetos após terminar a configuração.
 	VAO1.Unbind();
@@ -157,7 +198,43 @@ int main() {
 	EBO1.Unbind();
 
 
-	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
+	// ========================================================
+	// UNIFORM
+	//
+	// Procura no Shader Program a localização da variável
+	// "scale" declarada no Vertex Shader.
+	//
+	// O ID retornado será utilizado posteriormente para
+	// enviar um valor para essa variável.
+	// ========================================================
+	GLuint uniID =
+		glGetUniformLocation(shaderProgram.ID, "scale");
+
+
+	// ========================================================
+	// TEXTURA
+	//
+	// Cria uma textura utilizando a imagem "pop_cat.png".
+	//
+	// GL_TEXTURE_2D -> textura 2D.
+	// GL_TEXTURE0  -> unidade de textura utilizada.
+	// GL_RGBA      -> formato dos dados da imagem.
+	// GL_UNSIGNED_BYTE -> cada componente possui 1 byte.
+	// ========================================================
+	Texture popcat(
+		"pop_cat.png",
+		GL_TEXTURE_2D,
+		GL_TEXTURE0,
+		GL_RGBA,
+		GL_UNSIGNED_BYTE
+	);
+
+
+	// Associa a textura à variável "tex0" do Shader.
+	//
+	// O shader poderá utilizar essa variável para
+	// acessar a textura durante o desenho.
+	popcat.texUnit(shaderProgram, "tex0", 0);
 
 
 	// ========================================================
@@ -167,21 +244,30 @@ int main() {
 	//
 	// 1. Limpa a tela
 	// 2. Ativa o Shader Program
-	// 3. Ativa o VAO
-	// 4. Desenha usando os índices do EBO
-	// 5. Mostra o resultado
-	// 6. Processa eventos
+	// 3. Atualiza o Uniform "scale"
+	// 4. Ativa a textura
+	// 5. Ativa o VAO
+	// 6. Desenha usando os índices do EBO
+	// 7. Mostra o resultado
+	// 8. Processa eventos
 	// ========================================================
 	while (!glfwWindowShouldClose(window)) {
 
-		// Limpa a tela	
+		// Limpa a tela.
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
 		// Ativa o Shader Program.
 		shaderProgram.Activate();
+
+
+		// Envia o valor 0.5 para o Uniform "scale".
 		glUniform1f(uniID, 0.5f);
+
+
+		// Ativa a textura.
+		popcat.Bind();
 
 
 		// Ativa o VAO com a configuração dos vértices.
@@ -192,13 +278,18 @@ int main() {
 		// DESENHO COM ÍNDICES
 		//
 		// GL_TRIANGLES -> grupos de 3 índices formam triângulos.
-		// 9            -> utiliza 9 índices.
+		// 6            -> utiliza 6 índices.
 		// GL_UNSIGNED_INT -> cada índice é um unsigned int.
 		// 0            -> começa no primeiro índice do EBO.
 		//
-		// 9 índices = 3 triângulos.
+		// 6 índices = 2 triângulos.
 		// ====================================================
-		glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+		glDrawElements(
+			GL_TRIANGLES,
+			6,
+			GL_UNSIGNED_INT,
+			0
+		);
 
 
 		// Troca o buffer traseiro pelo dianteiro.
@@ -220,6 +311,9 @@ int main() {
 	VBO1.Delete();
 	EBO1.Delete();
 	shaderProgram.Delete();
+
+	// Libera a textura da memória da GPU.
+	popcat.Delete();
 
 
 	// Fecha a janela e encerra a GLFW.
