@@ -11,6 +11,7 @@
 #include "VAO.h"             // Cria e gerencia o Vertex Array Object
 #include "VBO.h"             // Cria e gerencia o Vertex Buffer Object
 #include "EBO.h"             // Cria e gerencia o Element Buffer Object
+#include "Camera.h"          // Cria e gerencia a câmera
 
 const unsigned int width = 800;
 const unsigned int height = 800;
@@ -208,20 +209,6 @@ int main() {
 	VBO1.Unbind();
 	EBO1.Unbind();
 
-
-	// ========================================================
-	// UNIFORM
-	//
-	// Procura no Shader Program a localização da variável
-	// "scale" declarada no Vertex Shader.
-	//
-	// O ID retornado será utilizado posteriormente para
-	// enviar um valor para essa variável.
-	// ========================================================
-	GLuint uniID =
-		glGetUniformLocation(shaderProgram.ID, "scale");
-
-
 	// ========================================================
 	// TEXTURA
 	//
@@ -247,11 +234,9 @@ int main() {
 	// acessar a textura durante o desenho.
 	popcat.texUnit(shaderProgram, "tex0", 0);
 
-	float rotation = 0.0f;
-	double prevTime = glfwGetTime();
-
 	glEnable(GL_DEPTH_TEST); // Habilita o teste de profundidade para renderização 3D
 
+	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f)); // Inicializa a câmera
 
 	// ========================================================
 	// LOOP PRINCIPAL
@@ -276,40 +261,11 @@ int main() {
 		// Ativa o Shader Program.
 		shaderProgram.Activate();
 
-		// Atualiza o valor do Uniform "scale" a cada 1/60 segundos.
-		double crntTime = glfwGetTime();
-		if (crntTime - prevTime >= 1.0 / 60)
-		{
-			// Atualiza a rotação do objeto.
-			rotation += 0.5f;
-			prevTime = crntTime;
-		}
+		// Atualiza a matriz da câmera com base nos inputs do usuário.
+		camera.Inputs(window);
 
-		// ====================================================
-		// MATRIZES DE TRANSFORMAÇÃO
-		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-
-		// ====================================================
-		// TRANSFORMAÇÕES
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -2.0f));
-		proj = glm::perspective(glm::radians(45.0f), (float)(width / height), 0.1f, 100.0f);
-
-		// ====================================================
-		// ENVIO DAS MATRIZES PARA O SHADER
-		int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-		int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-		int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
-
-		// Envia o valor 0.5 para o Uniform "scale".
-		glUniform1f(uniID, 0.5f);
+		// Atualiza a matriz de projeção e view no shader.
+		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
 
 		// Ativa a textura.
 		popcat.Bind();
