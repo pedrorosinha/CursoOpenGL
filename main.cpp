@@ -386,6 +386,10 @@ int main() {
 	VBO1.Delete();
 	EBO1.Delete();
 	shaderProgram.Delete();
+	lightShader.Delete();
+	lightVAO.Delete();
+	lightVBO.Delete();
+	lightEBO.Delete();
 
 	// Libera a textura da memória da GPU.
 	popcat.Delete();
