@@ -76,6 +76,12 @@
     <None Include="default.frag">
       <Filter>Arquivos de Origem\Shaders</Filter>
     </None>
+    <None Include="light.vert">
+      <Filter>Arquivos de Origem\Shaders</Filter>
+    </None>
+    <None Include="light.frag">
+      <Filter>Arquivos de Origem\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="pop_cat.png">
